@@ -3,137 +3,175 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vendor Drive v2</title>
+    <title>Vendor Drive Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        :root { --primary: #1a73e8; --bg: #f1f3f4; }
-        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg); color: #3c4043; }
+        :root { --primary: #1a73e8; --bg: #f8f9fa; --card: #ffffff; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg); padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .card { background: var(--card); padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; }
         
-        /* Layout Containers */
-        .container { max-width: 1000px; margin: 20px auto; padding: 20px; }
-        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 20px; }
+        /* Upload Area */
+        .upload-zone { border: 2px dashed #dadce0; padding: 30px; text-align: center; border-radius: 8px; transition: 0.3s; }
+        .upload-zone:hover { border-color: var(--primary); background: #f1f8ff; }
+        input[type="file"] { margin-bottom: 15px; }
         
         /* Controls */
-        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
-        .view-btns button { background: white; border: 1px solid #dadce0; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
-        .view-btns button.active { background: #e8f0fe; color: var(--primary); border-color: var(--primary); }
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .view-btns button { background: white; border: 1px solid #dadce0; padding: 8px 15px; cursor: pointer; border-radius: 5px; margin-left: 5px; }
+        .view-btns button.active { background: var(--primary); color: white; border-color: var(--primary); }
 
-        /* File Display Logic */
+        /* File Display */
         #fileContainer { display: grid; gap: 15px; }
-        
-        /* VIEW: LIST */
         .view-list { grid-template-columns: 1fr; }
-        .view-list .file-card { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #eee; background: white; }
+        .view-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+        .view-big { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 
-        /* VIEW: GRID / ICONS */
-        .view-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
-        .view-big-icon { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        .file-card { background: white; border: 1px solid #eee; padding: 15px; border-radius: 8px; display: flex; align-items: center; position: relative; transition: transform 0.2s; }
+        .view-grid .file-card, .view-big .file-card { flex-direction: column; text-align: center; }
+        .file-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         
-        .view-grid .file-card, .view-big-icon .file-card { 
-            flex-direction: column; text-align: center; padding: 20px; border: 1px solid #dadce0; border-radius: 8px; background: white;
-        }
-
-        .icon-box { font-size: 2rem; margin-bottom: 10px; }
-        .view-big-icon .icon-box { font-size: 4rem; }
+        .icon { font-size: 1.5rem; margin-right: 15px; }
+        .view-grid .icon { font-size: 2.5rem; margin: 0 0 10px 0; }
+        .view-big .icon { font-size: 4rem; margin: 0 0 15px 0; }
         
-        .file-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
-        .file-date { font-size: 0.75rem; color: #70757a; margin-top: 4px; }
+        .info { flex-grow: 1; overflow: hidden; }
+        .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+        .date { font-size: 0.75rem; color: #70757a; }
         
-        .btn-dl { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 0.9rem; margin-top: 10px; display: inline-block; }
+        .dl-link { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 0.85rem; margin-top: 10px; }
+        
+        /* Debug Logger */
+        #debugLog { background: #202124; color: #ff5252; padding: 15px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; margin-top: 20px; display: none; overflow-x: auto; }
+        .btn-main { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 6px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="card">
-        <h2>Upload Files</h2>
-        <input type="file" id="fileInput">
-        <button onclick="uploadFile()" id="uploadBtn" style="background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Upload Now</button>
-        <p id="status"></p>
+        <div class="upload-zone">
+            <h2 style="margin-top:0">📤 Sincere File Portal</h2>
+            <input type="file" id="fileInput"><br>
+            <button class="btn-main" id="uploadBtn" onclick="uploadFile()">Upload Now</button>
+            <p id="status" style="margin-top:10px; font-weight:bold;"></p>
+        </div>
     </div>
 
     <div class="toolbar">
-        <h3>Your Files</h3>
-        <div class="view-btns" id="viewBtns">
-            <button onclick="changeView('list')" id="btn-list" class="active">List</button>
-            <button onclick="changeView('grid')" id="btn-grid">Small Icons</button>
-            <button onclick="changeView('big-icon')" id="btn-big">Big Icons</button>
+        <h3 id="fileCount">Recent Files (0)</h3>
+        <div class="view-btns">
+            <button onclick="updateView('list')" id="listBtn" class="active">List</button>
+            <button onclick="updateView('grid')" id="gridBtn">Small</button>
+            <button onclick="updateView('big')" id="bigBtn">Large Icons</button>
         </div>
     </div>
 
-    <div id="fileContainer" class="view-list">
-        </div>
+    <div id="fileContainer" class="view-list"></div>
+    
+    <div id="debugLog"></div>
 </div>
 
 <script>
-    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // --- CONFIGURE YOUR SUPABASE HERE ---
+    const SB_URL = 'YOUR_SUPABASE_PROJECT_URL'; 
+    const SB_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const BUCKET_NAME = 'vendor-files'; 
+
+    const supabase = supabase.createClient(SB_URL, SB_KEY);
+
+    // Logger to catch errors visually on mobile/laptop
+    function logError(msg) {
+        const log = document.getElementById('debugLog');
+        log.style.display = 'block';
+        log.innerHTML += `> ${msg}<br>`;
+    }
 
     async function listFiles() {
         const container = document.getElementById('fileContainer');
-        const { data, error } = await supabase.storage.from('vendor-files').list('', {
+        const countHeader = document.getElementById('fileCount');
+        
+        const { data, error } = await supabase.storage.from(BUCKET_NAME).list('', {
             sortBy: { column: 'created_at', order: 'desc' }
         });
 
-        if (error) return container.innerHTML = "Error: " + error.message;
-        
-        container.innerHTML = "";
-        data.forEach(file => {
-            const date = new Date(file.created_at).toLocaleDateString();
-            const url = `${SUPABASE_URL}/storage/v1/object/public/vendor-files/${file.name}`;
-            
-            // Clean file name (remove timestamp prefix if you used it in previous code)
-            const displayName = file.name.includes('_') ? file.name.split('_').slice(1).join('_') : file.name;
+        if (error) {
+            logError("List Error: " + error.message);
+            return;
+        }
 
+        countHeader.innerText = `Recent Files (${data.length})`;
+        container.innerHTML = data.length === 0 ? "No files found in bucket." : "";
+        
+        data.forEach(file => {
+            const cleanName = file.name.includes('_') ? file.name.split('_').slice(1).join('_') : file.name;
+            const date = new Date(file.created_at).toLocaleDateString();
+            const publicUrl = `${SB_URL}/storage/v1/object/public/${BUCKET_NAME}/${file.name}`;
+            
             const div = document.createElement('div');
             div.className = 'file-card';
             div.innerHTML = `
-                <div class="icon-box">${getIcon(file.name)}</div>
-                <div class="file-info">
-                    <div title="${displayName}"><strong>${displayName}</strong></div>
-                    <div class="file-date">${date}</div>
+                <div class="icon">${getFileIcon(file.name)}</div>
+                <div class="info">
+                    <span class="name" title="${cleanName}">${cleanName}</span>
+                    <span class="date">${date}</span><br>
+                    <a href="${publicUrl}" target="_blank" class="dl-link">Download</a>
                 </div>
-                <a href="${url}" target="_blank" class="btn-dl">Download</a>
             `;
             container.appendChild(div);
         });
     }
 
-    function getIcon(name) {
-        const ext = name.split('.').pop().toLowerCase();
-        if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return '🖼️';
-        if (['pdf'].includes(ext)) return '📕';
-        if (['xlsx', 'csv'].includes(ext)) return '📊';
-        if (['mp4', 'mov'].includes(ext)) return '🎬';
-        if (['ppt', 'pptx'].includes(ext)) return '📉';
-        return '📄';
-    }
-
-    function changeView(type) {
-        const container = document.getElementById('fileContainer');
-        container.className = 'view-' + type;
-        
-        // Update button active state
-        document.querySelectorAll('.view-btns button').forEach(b => b.classList.remove('active'));
-        document.getElementById('btn-' + type.split('-')[0]).classList.add('active');
-    }
-
     async function uploadFile() {
-        const file = document.getElementById('fileInput').files[0];
-        if (!file) return;
+        const input = document.getElementById('fileInput');
         const btn = document.getElementById('uploadBtn');
+        const status = document.getElementById('status');
+        
+        if (!input.files.length) return alert("Select a file first");
+
+        const file = input.files[0];
         btn.disabled = true;
-        
-        // We use a timestamp prefix so files with same name don't overwrite
-        const { error } = await supabase.storage.from('vendor-files').upload(`${Date.now()}_${file.name}`, file);
-        
-        if (error) alert(error.message);
-        else listFiles();
-        btn.disabled = false;
+        btn.innerText = "Working...";
+        status.innerText = "Uploading to Cloud...";
+
+        const finalPath = `${Date.now()}_${file.name}`;
+
+        try {
+            const { data, error } = await supabase.storage
+                .from(BUCKET_NAME)
+                .upload(finalPath, file);
+
+            if (error) {
+                logError("Upload Error: " + error.message);
+                status.innerText = "❌ Failed";
+            } else {
+                status.innerText = "✅ Success!";
+                input.value = '';
+                listFiles();
+            }
+        } catch (e) {
+            logError("System Exception: " + e.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerText = "Upload Now";
+        }
     }
 
+    function getFileIcon(filename) {
+        const ext = filename.split('.').pop().toLowerCase();
+        const map = { pdf: '📕', xlsx: '📊', xls: '📊', csv: '📊', png: '🖼️', jpg: '🖼️', jpeg: '🖼️', mp4: '🎬', pptx: '📉', docx: '📝' };
+        return map[ext] || '📄';
+    }
+
+    function updateView(type) {
+        document.getElementById('fileContainer').className = 'view-' + type;
+        document.querySelectorAll('.view-btns button').forEach(b => b.classList.remove('active'));
+        document.getElementById(type + 'Btn').classList.add('active');
+    }
+
+    // Initial Load
     listFiles();
 </script>
+
 </body>
 </html>
