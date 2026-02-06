@@ -3,99 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sincere File Portal</title>
+    <title>Vendor Drive v2</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: #f4f7f6; }
-        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        h2 { color: #2c3e50; margin-top: 0; }
-        input[type="file"] { border: 2px dashed #3498db; padding: 20px; width: 100%; box-sizing: border-box; cursor: pointer; border-radius: 5px; }
-        button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
-        button:disabled { background: #bdc3c7; }
-        .file-list { list-style: none; padding: 0; }
-        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
-        .file-item:last-child { border-bottom: none; }
-        .status { color: #e67e22; font-weight: bold; }
+        :root { --primary: #1a73e8; --bg: #f1f3f4; }
+        body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; background: var(--bg); color: #3c4043; }
+        
+        /* Layout Containers */
+        .container { max-width: 1000px; margin: 20px auto; padding: 20px; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); margin-bottom: 20px; }
+        
+        /* Controls */
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; }
+        .view-btns button { background: white; border: 1px solid #dadce0; padding: 8px 12px; cursor: pointer; border-radius: 4px; }
+        .view-btns button.active { background: #e8f0fe; color: var(--primary); border-color: var(--primary); }
+
+        /* File Display Logic */
+        #fileContainer { display: grid; gap: 15px; }
+        
+        /* VIEW: LIST */
+        .view-list { grid-template-columns: 1fr; }
+        .view-list .file-card { display: flex; justify-content: space-between; align-items: center; padding: 10px 15px; border-bottom: 1px solid #eee; background: white; }
+
+        /* VIEW: GRID / ICONS */
+        .view-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+        .view-big-icon { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+        
+        .view-grid .file-card, .view-big-icon .file-card { 
+            flex-direction: column; text-align: center; padding: 20px; border: 1px solid #dadce0; border-radius: 8px; background: white;
+        }
+
+        .icon-box { font-size: 2rem; margin-bottom: 10px; }
+        .view-big-icon .icon-box { font-size: 4rem; }
+        
+        .file-info { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 100%; }
+        .file-date { font-size: 0.75rem; color: #70757a; margin-top: 4px; }
+        
+        .btn-dl { color: var(--primary); text-decoration: none; font-weight: bold; font-size: 0.9rem; margin-top: 10px; display: inline-block; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Upload File</h2>
-    <p>Upload PDFs, Excel, Videos, or Images (Max 50MB free tier)</p>
-    <input type="file" id="fileInput">
-    <button id="uploadBtn">Upload to Portal</button>
-    <div id="status" class="status"></div>
-</div>
+<div class="container">
+    <div class="card">
+        <h2>Upload Files</h2>
+        <input type="file" id="fileInput">
+        <button onclick="uploadFile()" id="uploadBtn" style="background:var(--primary); color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer;">Upload Now</button>
+        <p id="status"></p>
+    </div>
 
-<div class="card">
-    <h2>Available Files</h2>
-    <div id="fileList" class="file-list">Loading files...</div>
+    <div class="toolbar">
+        <h3>Your Files</h3>
+        <div class="view-btns" id="viewBtns">
+            <button onclick="changeView('list')" id="btn-list" class="active">List</button>
+            <button onclick="changeView('grid')" id="btn-grid">Small Icons</button>
+            <button onclick="changeView('big-icon')" id="btn-big">Big Icons</button>
+        </div>
+    </div>
+
+    <div id="fileContainer" class="view-list">
+        </div>
 </div>
 
 <script>
-    // 1. SET UP YOUR CREDENTIALS HERE
-    const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
     const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const fileInput = document.getElementById('fileInput');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const statusDiv = document.getElementById('status');
-    const fileListDiv = document.getElementById('fileList');
-
-    // 2. FETCH FILES
     async function listFiles() {
+        const container = document.getElementById('fileContainer');
         const { data, error } = await supabase.storage.from('vendor-files').list('', {
-            limit: 100,
             sortBy: { column: 'created_at', order: 'desc' }
         });
 
-        if (error) {
-            fileListDiv.innerHTML = "Error loading files.";
-            return;
-        }
-
-        fileListDiv.innerHTML = data.length === 0 ? "No files uploaded yet." : "";
+        if (error) return container.innerHTML = "Error: " + error.message;
+        
+        container.innerHTML = "";
         data.forEach(file => {
-            const div = document.createElement('div');
-            div.className = 'file-item';
-            const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/vendor-files/${file.name}`;
+            const date = new Date(file.created_at).toLocaleDateString();
+            const url = `${SUPABASE_URL}/storage/v1/object/public/vendor-files/${file.name}`;
             
+            // Clean file name (remove timestamp prefix if you used it in previous code)
+            const displayName = file.name.includes('_') ? file.name.split('_').slice(1).join('_') : file.name;
+
+            const div = document.createElement('div');
+            div.className = 'file-card';
             div.innerHTML = `
-                <span>${file.name}</span>
-                <a href="${publicUrl}" target="_blank"><button>Download</button></a>
+                <div class="icon-box">${getIcon(file.name)}</div>
+                <div class="file-info">
+                    <div title="${displayName}"><strong>${displayName}</strong></div>
+                    <div class="file-date">${date}</div>
+                </div>
+                <a href="${url}" target="_blank" class="btn-dl">Download</a>
             `;
-            fileListDiv.appendChild(div);
+            container.appendChild(div);
         });
     }
 
-    // 3. UPLOAD LOGIC
-    uploadBtn.onclick = async () => {
-        const file = fileInput.files[0];
-        if (!file) return alert("Select a file first");
+    function getIcon(name) {
+        const ext = name.split('.').pop().toLowerCase();
+        if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return '🖼️';
+        if (['pdf'].includes(ext)) return '📕';
+        if (['xlsx', 'csv'].includes(ext)) return '📊';
+        if (['mp4', 'mov'].includes(ext)) return '🎬';
+        if (['ppt', 'pptx'].includes(ext)) return '📉';
+        return '📄';
+    }
 
-        uploadBtn.disabled = true;
-        statusDiv.innerText = "Uploading... please wait.";
+    function changeView(type) {
+        const container = document.getElementById('fileContainer');
+        container.className = 'view-' + type;
+        
+        // Update button active state
+        document.querySelectorAll('.view-btns button').forEach(b => b.classList.remove('active'));
+        document.getElementById('btn-' + type.split('-')[0]).classList.add('active');
+    }
 
-        const fileName = `${Date.now()}_${file.name}`;
-        const { data, error } = await supabase.storage
-            .from('vendor-files')
-            .upload(fileName, file);
+    async function uploadFile() {
+        const file = document.getElementById('fileInput').files[0];
+        if (!file) return;
+        const btn = document.getElementById('uploadBtn');
+        btn.disabled = true;
+        
+        // We use a timestamp prefix so files with same name don't overwrite
+        const { error } = await supabase.storage.from('vendor-files').upload(`${Date.now()}_${file.name}`, file);
+        
+        if (error) alert(error.message);
+        else listFiles();
+        btn.disabled = false;
+    }
 
-        if (error) {
-            alert("Upload failed: " + error.message);
-        } else {
-            statusDiv.innerText = "Upload successful!";
-            fileInput.value = '';
-            listFiles();
-        }
-        uploadBtn.disabled = false;
-    };
-
-    // Initial load
     listFiles();
 </script>
-
 </body>
 </html>
