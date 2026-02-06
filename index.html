@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sincere File Portal</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; line-height: 1.6; background-color: #f4f7f6; }
+        .card { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: #2c3e50; margin-top: 0; }
+        input[type="file"] { border: 2px dashed #3498db; padding: 20px; width: 100%; box-sizing: border-box; cursor: pointer; border-radius: 5px; }
+        button { background: #3498db; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+        button:disabled { background: #bdc3c7; }
+        .file-list { list-style: none; padding: 0; }
+        .file-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; }
+        .file-item:last-child { border-bottom: none; }
+        .status { color: #e67e22; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Upload File</h2>
+    <p>Upload PDFs, Excel, Videos, or Images (Max 50MB free tier)</p>
+    <input type="file" id="fileInput">
+    <button id="uploadBtn">Upload to Portal</button>
+    <div id="status" class="status"></div>
+</div>
+
+<div class="card">
+    <h2>Available Files</h2>
+    <div id="fileList" class="file-list">Loading files...</div>
+</div>
+
+<script>
+    // 1. SET UP YOUR CREDENTIALS HERE
+    const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const fileInput = document.getElementById('fileInput');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const statusDiv = document.getElementById('status');
+    const fileListDiv = document.getElementById('fileList');
+
+    // 2. FETCH FILES
+    async function listFiles() {
+        const { data, error } = await supabase.storage.from('vendor-files').list('', {
+            limit: 100,
+            sortBy: { column: 'created_at', order: 'desc' }
+        });
+
+        if (error) {
+            fileListDiv.innerHTML = "Error loading files.";
+            return;
+        }
+
+        fileListDiv.innerHTML = data.length === 0 ? "No files uploaded yet." : "";
+        data.forEach(file => {
+            const div = document.createElement('div');
+            div.className = 'file-item';
+            const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/vendor-files/${file.name}`;
+            
+            div.innerHTML = `
+                <span>${file.name}</span>
+                <a href="${publicUrl}" target="_blank"><button>Download</button></a>
+            `;
+            fileListDiv.appendChild(div);
+        });
+    }
+
+    // 3. UPLOAD LOGIC
+    uploadBtn.onclick = async () => {
+        const file = fileInput.files[0];
+        if (!file) return alert("Select a file first");
+
+        uploadBtn.disabled = true;
+        statusDiv.innerText = "Uploading... please wait.";
+
+        const fileName = `${Date.now()}_${file.name}`;
+        const { data, error } = await supabase.storage
+            .from('vendor-files')
+            .upload(fileName, file);
+
+        if (error) {
+            alert("Upload failed: " + error.message);
+        } else {
+            statusDiv.innerText = "Upload successful!";
+            fileInput.value = '';
+            listFiles();
+        }
+        uploadBtn.disabled = false;
+    };
+
+    // Initial load
+    listFiles();
+</script>
+
+</body>
+</html>
